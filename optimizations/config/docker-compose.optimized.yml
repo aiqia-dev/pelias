@@ -1,0 +1,242 @@
+version: '3.8'
+
+# Pelias Optimized Docker Compose
+# High-performance configuration with all microservices
+
+services:
+  # ===================================
+  # ELASTICSEARCH - Database Layer
+  # ===================================
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.9
+    container_name: pelias_elasticsearch
+    restart: unless-stopped
+    environment:
+      - node.name=pelias-es-node
+      - cluster.name=pelias-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms4g -Xmx4g"  # Adjust based on available RAM
+      - indices.memory.index_buffer_size=30%
+      - indices.queries.cache.size=10%
+      - thread_pool.write.queue_size=1000
+      - thread_pool.search.queue_size=1000
+      - xpack.security.enabled=false
+      - xpack.monitoring.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+      - ./config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+      - elasticsearch-logs:/usr/share/elasticsearch/logs
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - pelias-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ===================================
+  # REDIS - Caching Layer
+  # ===================================
+  redis:
+    image: redis:7-alpine
+    container_name: pelias_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory 2gb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --appendonly yes
+      --appendfsync everysec
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - pelias-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ===================================
+  # LIBPOSTAL - Address Parsing
+  # ===================================
+  libpostal:
+    image: pelias/libpostal-service:latest
+    container_name: pelias_libpostal
+    restart: unless-stopped
+    ports:
+      - "4400:4400"
+    networks:
+      - pelias-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4400/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===================================
+  # PLACEHOLDER - Admin Areas
+  # ===================================
+  placeholder:
+    image: pelias/placeholder:latest
+    container_name: pelias_placeholder
+    restart: unless-stopped
+    environment:
+      - PORT=4100
+    volumes:
+      - placeholder-data:/data
+    ports:
+      - "4100:4100"
+    networks:
+      - pelias-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4100/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===================================
+  # PIP - Point in Polygon
+  # ===================================
+  pip:
+    image: pelias/pip-service:latest
+    container_name: pelias_pip
+    restart: unless-stopped
+    environment:
+      - PORT=4200
+    volumes:
+      - pip-data:/data
+    ports:
+      - "4200:4200"
+    networks:
+      - pelias-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4200/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===================================
+  # INTERPOLATION - Address Ranges
+  # ===================================
+  interpolation:
+    image: pelias/interpolation:latest
+    container_name: pelias_interpolation
+    restart: unless-stopped
+    environment:
+      - PORT=4300
+    volumes:
+      - interpolation-data:/data
+    ports:
+      - "4300:4300"
+    networks:
+      - pelias-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4300/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===================================
+  # API - Main Service
+  # ===================================
+  api:
+    image: pelias/api:latest
+    container_name: pelias_api
+    restart: unless-stopped
+    environment:
+      - PORT=4000
+      - PELIAS_CONFIG=/code/pelias.json
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CACHE_ENABLED=true
+    volumes:
+      - ./config/pelias.optimized.json:/code/pelias.json:ro
+      - api-logs:/var/log/pelias
+    ports:
+      - "4000:4000"
+    networks:
+      - pelias-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      libpostal:
+        condition: service_healthy
+      placeholder:
+        condition: service_healthy
+      pip:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # ===================================
+  # NGINX - Reverse Proxy (Optional)
+  # ===================================
+  nginx:
+    image: nginx:alpine
+    container_name: pelias_nginx
+    restart: unless-stopped
+    volumes:
+      - ./config/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - pelias-network
+    depends_on:
+      - api
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+# ===================================
+# NETWORKS
+# ===================================
+networks:
+  pelias-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+
+# ===================================
+# VOLUMES
+# ===================================
+volumes:
+  elasticsearch-data:
+    driver: local
+  elasticsearch-logs:
+    driver: local
+  redis-data:
+    driver: local
+  placeholder-data:
+    driver: local
+  pip-data:
+    driver: local
+  interpolation-data:
+    driver: local
+  api-logs:
+    driver: local

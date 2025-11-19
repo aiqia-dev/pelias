@@ -1,0 +1,64 @@
+## JVM configuration for Elasticsearch optimized for Pelias
+
+################################################################
+## IMPORTANT: JVM heap size
+################################################################
+## Xms represents the initial size of total heap space
+## Xmx represents the maximum size of total heap space
+## Set via ES_JAVA_OPTS environment variable
+## Recommended: 50% of available RAM, max 32GB
+##
+## Examples:
+## -Xms4g
+## -Xmx4g
+##
+## For 16GB RAM server: -Xms8g -Xmx8g
+## For 32GB RAM server: -Xms16g -Xmx16g
+## For 64GB+ RAM server: -Xms31g -Xmx31g (don't exceed 32GB)
+
+################################################################
+## Expert settings
+################################################################
+
+## GC configuration
+-XX:+UseG1GC
+-XX:G1ReservePercent=25
+-XX:InitiatingHeapOccupancyPercent=30
+
+## JVM temporary directory
+-Djava.io.tmpdir=${ES_TMPDIR}
+
+## Heap dumps
+-XX:+HeapDumpOnOutOfMemoryError
+-XX:HeapDumpPath=/var/log/elasticsearch/
+
+## JVM fatal error logs
+-XX:ErrorFile=/var/log/elasticsearch/hs_err_pid%p.log
+
+## GC logging
+8-13:-Xlog:gc*,gc+age=trace,safepoint:file=/var/log/elasticsearch/gc.log:utctime,pid,tags:filecount=32,filesize=64m
+
+## Optimization flags
+-XX:+AlwaysPreTouch
+-server
+-Djava.awt.headless=true
+-Dfile.encoding=UTF-8
+-Djna.nosys=true
+-XX:-OmitStackTraceInFastThrow
+-Dio.netty.noUnsafe=true
+-Dio.netty.noKeySetOptimization=true
+-Dio.netty.recycler.maxCapacityPerThread=0
+-Dlog4j.shutdownHookEnabled=false
+-Dlog4j2.disable.jmx=true
+
+## Locale
+-Duser.language=en
+-Duser.country=US
+-Duser.variant=
+
+## Listeners
+-XX:+ExitOnOutOfMemoryError
+
+## Performance tuning
+-XX:MaxDirectMemorySize=1g
+-XX:+UseStringDeduplication

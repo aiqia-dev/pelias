@@ -1,0 +1,56 @@
+# Elasticsearch Optimized Configuration for Pelias
+# Version: 7.x / 8.x compatible
+
+cluster.name: pelias-cluster
+node.name: pelias-node-1
+
+# Network settings
+network.host: 0.0.0.0
+http.port: 9200
+transport.port: 9300
+
+# Paths
+path.data: /usr/share/elasticsearch/data
+path.logs: /usr/share/elasticsearch/logs
+
+# Memory settings
+# Note: Set ES_JAVA_OPTS="-Xms4g -Xmx4g" in environment
+# Use 50% of available RAM, max 32GB
+bootstrap.memory_lock: true
+
+# Discovery (single node for development, adjust for production)
+discovery.type: single-node
+
+# Performance optimizations
+indices.memory.index_buffer_size: 30%
+indices.queries.cache.size: 10%
+indices.fielddata.cache.size: 20%
+
+# Thread pool optimization
+thread_pool.write.queue_size: 1000
+thread_pool.search.queue_size: 1000
+
+# Circuit breakers (prevent OOM)
+indices.breaker.total.limit: 70%
+indices.breaker.fielddata.limit: 40%
+indices.breaker.request.limit: 40%
+
+# Query settings
+search.max_buckets: 10000
+indices.query.bool.max_clause_count: 4096
+
+# Compression
+index.codec: best_compression
+
+# Action destructive requires name (safety)
+action.destructive_requires_name: true
+
+# CORS (if needed for debugging)
+http.cors.enabled: true
+http.cors.allow-origin: "*"
+http.cors.allow-headers: "X-Requested-With, Content-Type, Content-Length, Authorization"
+
+# Monitoring
+xpack.monitoring.enabled: false
+xpack.security.enabled: false
+xpack.ml.enabled: false

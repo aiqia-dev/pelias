@@ -1,0 +1,26 @@
+{
+  "name": "pelias-redis-cache",
+  "version": "1.0.0",
+  "description": "Redis caching middleware for Pelias geocoding API",
+  "main": "redis-cache-middleware.js",
+  "scripts": {
+    "test": "jest",
+    "start": "node example-server.js"
+  },
+  "keywords": [
+    "pelias",
+    "geocoding",
+    "cache",
+    "redis",
+    "performance"
+  ],
+  "dependencies": {
+    "redis": "^3.1.2",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "jest": "^29.5.0"
+  },
+  "author": "Pelias Optimization Team",
+  "license": "MIT"
+}
