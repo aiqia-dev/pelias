@@ -1,0 +1,198 @@
+{
+  "logger": {
+    "level": "info",
+    "timestamp": true,
+    "json": true
+  },
+  "esclient": {
+    "apiVersion": "7.x",
+    "hosts": [
+      {
+        "host": "elasticsearch",
+        "port": 9200
+      }
+    ],
+    "keepAlive": true,
+    "maxRetries": 3,
+    "requestTimeout": 120000,
+    "log": [
+      {
+        "type": "stdio",
+        "levels": ["error", "warning"]
+      }
+    ]
+  },
+  "elasticsearch": {
+    "settings": {
+      "index": {
+        "number_of_shards": 5,
+        "number_of_replicas": 1,
+        "refresh_interval": "30s",
+        "max_result_window": 10000,
+        "query": {
+          "default_field": "name.default"
+        },
+        "codec": "best_compression"
+      },
+      "analysis": {
+        "filter": {
+          "edge_ngram_filter": {
+            "type": "edge_ngram",
+            "min_gram": 1,
+            "max_gram": 20
+          }
+        }
+      }
+    }
+  },
+  "api": {
+    "version": "1.0",
+    "indexName": "pelias",
+    "host": "0.0.0.0",
+    "port": 4000,
+    "legacyUrl": false,
+    "accessLog": "common",
+    "textAnalyzer": "libpostal",
+    "relativeGeonames": false,
+    "localization": {
+      "flipNumberAndStreetCountries": ["CZ", "SK"]
+    },
+    "targets": {
+      "auto_discover": true,
+      "layers_by_source": {
+        "openaddresses": ["address"],
+        "openstreetmap": ["address", "venue", "street"],
+        "whosonfirst": ["borough", "locality", "county", "macrocounty", "region", "macroregion", "country", "dependency"],
+        "geonames": ["locality", "county", "region", "country"]
+      },
+      "source_aliases": {
+        "osm": ["openstreetmap"],
+        "oa": ["openaddresses"],
+        "wof": ["whosonfirst"],
+        "gn": ["geonames"]
+      },
+      "layer_aliases": {
+        "coarse": ["borough", "locality", "county", "macrocounty", "region", "macroregion", "country", "dependency"]
+      }
+    },
+    "customBoosts": {
+      "layer": {
+        "address": 3,
+        "street": 2,
+        "venue": 2,
+        "locality": 1.5,
+        "county": 1,
+        "region": 1,
+        "country": 0.5
+      },
+      "source": {
+        "openaddresses": 3,
+        "openstreetmap": 2,
+        "whosonfirst": 1.5,
+        "geonames": 1
+      }
+    },
+    "queryCache": {
+      "enabled": true,
+      "ttl": 3600
+    },
+    "defaultParameters": {
+      "size": 10
+    }
+  },
+  "imports": {
+    "adminLookup": {
+      "enabled": true,
+      "maxConcurrentReqs": 100,
+      "usePostalCity": true
+    },
+    "blacklist": {
+      "files": []
+    },
+    "csv": {
+      "datapath": "/data/csv",
+      "files": []
+    },
+    "geonames": {
+      "datapath": "/data/geonames",
+      "countryCode": "BR"
+    },
+    "openstreetmap": {
+      "datapath": "/data/openstreetmap",
+      "leveldbpath": "/tmp/leveldb",
+      "import": [
+        {
+          "filename": "brazil.osm.pbf"
+        }
+      ]
+    },
+    "openaddresses": {
+      "datapath": "/data/openaddresses",
+      "files": [
+        "br/**/*.csv"
+      ]
+    },
+    "polyline": {
+      "datapath": "/data/polylines",
+      "files": []
+    },
+    "whosonfirst": {
+      "datapath": "/data/whosonfirst",
+      "importVenues": false,
+      "importPostalcodes": true,
+      "importPlace": [
+        "borough",
+        "locality",
+        "county",
+        "macrocounty",
+        "region",
+        "macroregion",
+        "dependency",
+        "country"
+      ],
+      "sqlite": true
+    },
+    "interpolation": {
+      "download": {
+        "tiger": {
+          "datapath": "/data/tiger",
+          "states": []
+        }
+      }
+    }
+  },
+  "interpolation": {
+    "client": {
+      "adapter": "http",
+      "host": "http://interpolation:4300",
+      "timeout": 5000,
+      "retries": 2
+    }
+  },
+  "services": {
+    "placeholder": {
+      "url": "http://placeholder:4100",
+      "timeout": 5000,
+      "retries": 2
+    },
+    "pip": {
+      "url": "http://pip:4200",
+      "timeout": 5000,
+      "retries": 2
+    },
+    "libpostal": {
+      "url": "http://libpostal:4400",
+      "timeout": 5000,
+      "retries": 2
+    }
+  },
+  "acceptance-tests": {
+    "endpoints": {
+      "local": "http://localhost:4000/v1/",
+      "docker": "http://api:4000/v1/"
+    }
+  },
+  "dbclient": {
+    "statFrequency": 1000
+  }
+}
